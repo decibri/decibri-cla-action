@@ -1,0 +1,45 @@
+# Continuous checks for the decibri CLA system itself: typecheck, lint, tests,
+# and a guard that the committed dist/ bundle is up to date with src/.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Bundle
+        run: npm run build
+
+      - name: Verify dist is up to date
+        run: |
+          if [ -n "$(git status --porcelain dist)" ]; then
+            echo "dist/ is out of date. Run 'npm run build' and commit the result."
+            git diff -- dist
+            exit 1
+          fi

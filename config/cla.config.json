@@ -1,0 +1,23 @@
+{
+  "icla": {
+    "file": "agreements/Individual-CLA-v1.md",
+    "versionLabel": "Individual-CLA-v1",
+    "versionHash": "sha256:e7ae2e1728e861282d1349db76a453a6f4146e22c31d2c1d25d81355d6c9e0d5"
+  },
+  "ccla": {
+    "file": "agreements/Corporate-CLA-v1.md",
+    "versionLabel": "Corporate-CLA-v1",
+    "versionHash": "sha256:769684c2fcf1b958a121757510fbc68dda4f5678d2570d5783ecf3c84f0aba01"
+  },
+  "assentPhraseIcla": "I have read the decibri Individual Contributor License Agreement and I hereby sign it.",
+  "checkName": "CLA",
+  "orgMembersBypass": true,
+  "lockPrOnMerge": true,
+  "botAndAppBypass": [
+    "dependabot"
+  ],
+  "allowedRepos": [
+    "decibri/decibri"
+  
+  ]
+}

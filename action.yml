@@ -1,0 +1,39 @@
+name: 'decibri CLA'
+description: 'Enforce individual and corporate Contributor License Agreements on pull requests. No server, no database.'
+author: 'Venture Consulting Group Pty Ltd trading as Decibri'
+
+inputs:
+  store-token:
+    description: >-
+      Token with contents read and write on the decibri/decibri-cla store repository,
+      used to read and append the signature and company data files. Source this
+      from a secret such as CLA_STORE_TOKEN. Never pass a broadly scoped token.
+    required: true
+  github-token:
+    description: >-
+      Token for the calling repository, used to read pull request context and to
+      set the CLA check, post comments, and lock merged pull requests. Defaults
+      to the workflow GITHUB_TOKEN.
+    required: false
+    default: ${{ github.token }}
+  store-repo:
+    description: >-
+      Full name (owner/repo) of the signature store repository that holds the
+      config, agreement texts, and signature data. Defaults to decibri/decibri-cla.
+    required: false
+    default: 'decibri/decibri-cla'
+  config-path:
+    description: 'Path to the CLA config file within this repository.'
+    required: false
+    default: 'config/cla.config.json'
+  dry-run:
+    description: >-
+      When true, evaluate and log the coverage decision without writing any
+      check, comment, or signature. Use this to validate against a live
+      repository before enforcement is switched on.
+    required: false
+    default: 'false'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
