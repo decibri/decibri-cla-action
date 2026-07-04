@@ -43,29 +43,60 @@ export function isRecheckCommand(body: string): boolean {
   return body.trim().toLowerCase() === 'recheck';
 }
 
-function fileUrl(storeRepo: string, path: string): string {
-  return `https://github.com/${storeRepo}/blob/main/${encodeURI(path)}`;
+// Links in the prompt comment must point at the PUBLIC files in this repository,
+// never at the private signature store repo, which returns 404 for contributors
+// who are not members. The default repo below is a fallback for local and test
+// runs; at runtime the values come from the action's own coordinates.
+const DEFAULT_ACTION_REPO = 'decibri/decibri-cla-action';
+
+/**
+ * Public base URL for links in the prompt comment, of the form
+ * `https://github.com/{owner}/{repo}/blob/{ref}`. The owner/repo comes from
+ * GITHUB_ACTION_REPOSITORY and the ref from GITHUB_ACTION_REF, which GitHub sets
+ * to this action's own coordinates and the ref the caller pinned (for example
+ * `v1`). Deriving the base this way keeps the links pointed at exactly the
+ * version that is running, and stops them silently drifting back to the private
+ * store repo. Both fall back to sensible defaults when the variables are absent.
+ */
+export function publicRepoBase(env: NodeJS.ProcessEnv = process.env): string {
+  const repo = env.GITHUB_ACTION_REPOSITORY || DEFAULT_ACTION_REPO;
+  const ref = env.GITHUB_ACTION_REF || 'main';
+  return `https://github.com/${repo}/blob/${ref}`;
+}
+
+function fileUrl(base: string, path: string): string {
+  return `${base}/${encodeURI(path)}`;
 }
 
 /** Build the signing prompt comment, tagged with the internal marker. */
-export function buildPromptComment(config: ClaConfig, storeRepo: string): string {
-  const iclaUrl = fileUrl(storeRepo, config.icla.file);
-  const privacyUrl = fileUrl(storeRepo, 'PRIVACY.md');
-  const contributionsUrl = fileUrl(storeRepo, 'CONTRIBUTIONS.md');
+export function buildPromptComment(config: ClaConfig): string {
+  const base = publicRepoBase();
+  const iclaUrl = fileUrl(base, config.icla.file);
+  const privacyUrl = fileUrl(base, 'PRIVACY.md');
+  const contributingUrl = fileUrl(base, 'CONTRIBUTING.md');
   return [
     CLA_COMMENT_MARKER,
-    'Thanks for contributing to decibri. Before this pull request can be merged, we need a signed Contributor License Agreement from you.',
+    '## Sign the Contributor License Agreement',
     '',
-    'To sign the Individual CLA, add a comment to this pull request containing exactly this line, from your own account:',
+    'Before this pull request can be merged, we need you to sign the Contributor License Agreement. It is one step.',
     '',
-    `> ${config.assentPhraseIcla}`,
+    '**Copy the line below and paste it as a new comment on this pull request, from your own account:**',
     '',
-    `By signing you confirm that you have read the [decibri Individual Contributor License Agreement](${iclaUrl}).`,
+    '```',
+    config.assentPhraseIcla,
+    '```',
     '',
-    `Contributing on behalf of an employer? Your employer may need a Corporate CLA on file. See [CONTRIBUTIONS](${contributionsUrl}).`,
+    `The CLA check turns green as soon as you post that comment. By posting it you confirm that you have read the [decibri Individual Contributor License Agreement](${iclaUrl}).`,
+    '',
+    '<details>',
+    '<summary>What you are agreeing to, and what we store</summary>',
     '',
     'We record only your GitHub account ID and username, the agreement version, the date and time, and a reference to this pull request. We do not store your email, IP address, or device information. See our ' +
       `[privacy notice](${privacyUrl}).`,
+    '',
+    `Contributing on behalf of an employer? Your employer may need a Corporate CLA on file. See the [contributing guide](${contributingUrl}).`,
+    '',
+    '</details>',
   ].join('\n');
 }
 
