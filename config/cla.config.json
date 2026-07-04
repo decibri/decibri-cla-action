@@ -18,6 +18,11 @@
   ],
   "allowedRepos": [
     "decibri",
-    "cla-test-again-11122233"
+    "decibri-cli",
+    "decibri-website",
+    "decibri-resampler",
+    "mcp-listen",
+    "decibri.cpp",
+    "decibri-web"
   ]
 }
