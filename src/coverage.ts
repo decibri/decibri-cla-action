@@ -50,9 +50,17 @@ function normaliseLogin(login: string): string {
   return lower.endsWith(BOT_SUFFIX) ? lower.slice(0, -BOT_SUFFIX.length) : lower;
 }
 
-/** True when the author matches an entry on the bot and app bypass list. */
+/**
+ * True when the author matches an entry on the bot and app bypass list AND is
+ * actually a bot or app account. Requiring the account to be a bot (login ends in
+ * `[bot]`, or the API reported its type as `Bot`) in addition to the exact list
+ * match stops a human-registrable slug, or a config-injected entry, from
+ * bypassing by name collision alone. The list match stays exact, not substring.
+ */
 export function isBypassedBotOrApp(author: Author, bypassList: string[]): boolean {
   if (!bypassList || bypassList.length === 0) return false;
+  const isBotAccount = author.login.toLowerCase().endsWith(BOT_SUFFIX) || author.type === 'Bot';
+  if (!isBotAccount) return false;
   const target = normaliseLogin(author.login);
   return bypassList.some((entry) => normaliseLogin(entry) === target);
 }

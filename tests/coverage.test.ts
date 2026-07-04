@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { decideCoverage } from '../src/coverage';
-import { isRepoAllowed } from '../src/config';
+import { isOrgOwnerAllowed, isRepoAllowed } from '../src/config';
 import {
   CURRENT_ICLA_HASH,
   OLD_ICLA_HASH,
@@ -218,17 +218,81 @@ describe('decideCoverage', () => {
     expect(decision.covered).toBe(true);
     expect(decision.reason).toBe('bot_or_app_bypass');
   });
+
+  it('bypasses an app whose type is Bot even when its login has no [bot] suffix', async () => {
+    // A GitHub App account can report type "Bot" while its login is a bare slug.
+    const decision = await decideCoverage({
+      author: makeAuthor({ githubId: 99, login: 'my-app', type: 'Bot' }),
+      org: 'decibri',
+      config: makeConfig({ botAndAppBypass: ['my-app'] }),
+      signatures: emptySignatures(),
+      companies: emptyCompanies(),
+      queries: makeQueries(),
+    });
+    expect(decision.covered).toBe(true);
+    expect(decision.reason).toBe('bot_or_app_bypass');
+  });
+
+  it('does NOT bypass a non-bot human account whose login matches a bypass entry', async () => {
+    // A human could register the login "dependabot"; the exact list match alone must
+    // not be enough. The account must also be a bot or app (login ends in [bot], or
+    // API type is Bot). This one is a plain User, so it is not bypassed.
+    const decision = await decideCoverage({
+      author: makeAuthor({ githubId: 1001, login: 'dependabot', type: 'User' }),
+      org: 'decibri',
+      config: makeConfig({ botAndAppBypass: ['dependabot'] }),
+      signatures: emptySignatures(),
+      companies: emptyCompanies(),
+      queries: makeQueries(),
+    });
+    expect(decision.covered).toBe(false);
+    expect(decision.reason).toBe('unsigned');
+  });
+});
+
+describe('hard org-owner gate (drives the runCla exit without writing)', () => {
+  it('accepts the decibri org owner, case insensitively', () => {
+    expect(isOrgOwnerAllowed('decibri')).toBe(true);
+    expect(isOrgOwnerAllowed('Decibri')).toBe(true);
+    expect(isOrgOwnerAllowed('DECIBRI')).toBe(true);
+  });
+
+  it('rejects any non-decibri owner, so the Action exits without action', () => {
+    expect(isOrgOwnerAllowed('attacker')).toBe(false);
+    expect(isOrgOwnerAllowed('decibri-fork')).toBe(false);
+    expect(isOrgOwnerAllowed('notdecibri')).toBe(false);
+    expect(isOrgOwnerAllowed('')).toBe(false);
+  });
 });
 
 describe('allowlist guard (drives the main.ts exit without writing)', () => {
-  it('accepts a repo that is listed', () => {
-    expect(isRepoAllowed(makeConfig(), 'decibri/decibri')).toBe(true);
-    // Case insensitive on the full name.
-    expect(isRepoAllowed(makeConfig(), 'Decibri/Decibri')).toBe(true);
+  it('matches a bare-name entry against the org-prefixed full name, case insensitively', () => {
+    // "decibri" is a bare repo name; it is compared as "decibri/decibri".
+    expect(isRepoAllowed(makeConfig({ allowedRepos: ['decibri'] }), 'decibri/decibri')).toBe(true);
+    expect(isRepoAllowed(makeConfig({ allowedRepos: ['decibri'] }), 'Decibri/Decibri')).toBe(true);
+    expect(isRepoAllowed(makeConfig({ allowedRepos: ['decibri', 'decibri-aec'] }), 'decibri/decibri-aec')).toBe(true);
   });
 
   it('rejects a repo that is not listed, so the Action exits without writing', () => {
-    expect(isRepoAllowed(makeConfig(), 'decibri/other-repo')).toBe(false);
+    expect(isRepoAllowed(makeConfig({ allowedRepos: ['decibri'] }), 'decibri/other-repo')).toBe(false);
     expect(isRepoAllowed(makeConfig({ allowedRepos: [] }), 'decibri/decibri')).toBe(false);
+  });
+
+  it('rejects (ignores) an entry containing a slash and warns, so a foreign owner cannot be smuggled in', () => {
+    const warn = vi.fn();
+    // An injected "attacker/evil" entry must never enroll the attacker/evil repo.
+    expect(isRepoAllowed(makeConfig({ allowedRepos: ['attacker/evil'] }), 'attacker/evil', warn)).toBe(false);
+    // Even the org's own full name is rejected when written with a slash: entries must be bare.
+    expect(isRepoAllowed(makeConfig({ allowedRepos: ['decibri/decibri'] }), 'decibri/decibri', warn)).toBe(false);
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls[0][0]).toMatch(/bare repository names/);
+  });
+
+  it('still matches a valid bare entry even when another entry is a rejected slash entry', () => {
+    const warn = vi.fn();
+    expect(
+      isRepoAllowed(makeConfig({ allowedRepos: ['attacker/evil', 'decibri'] }), 'decibri/decibri', warn),
+    ).toBe(true);
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });

@@ -8,7 +8,7 @@
 // The dry-run contract is simple and enforced structurally: every mutating
 // gateway call lives past a `dryRun` guard, so a dry run only reads and logs.
 
-import { isAgreementActive, isRepoAllowed, type ClaConfig } from './config';
+import { DECIBRI_ORG, isAgreementActive, isOrgOwnerAllowed, isRepoAllowed, type ClaConfig } from './config';
 import { checkConclusion, checkSummary, checkTitle } from './checks';
 import {
   buildPromptComment,
@@ -96,8 +96,18 @@ export async function runCla(deps: RunDeps): Promise<void> {
   const { context, config, log } = deps;
   const repoFullName = `${context.owner}/${context.repo}`;
 
+  // Hard org-owner gate: no repository whose owner is not the decibri org can run
+  // the Action, regardless of allowedRepos. Structural, and evaluated before any
+  // store read or write, same position as the allowlist guard.
+  if (!isOrgOwnerAllowed(context.owner)) {
+    log.info(
+      `Repository owner ${context.owner} is not the ${DECIBRI_ORG} organisation. Exiting without action.`,
+    );
+    return;
+  }
+
   // Multi repo guard: refuse to act on a repository that is not enrolled.
-  if (!isRepoAllowed(config, repoFullName)) {
+  if (!isRepoAllowed(config, repoFullName, (message) => log.warning(message))) {
     log.info(`Repository ${repoFullName} is not in allowedRepos. Exiting without action.`);
     return;
   }

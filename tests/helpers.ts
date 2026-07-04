@@ -18,7 +18,7 @@ export function makeConfig(overrides: Partial<ClaConfig> = {}): ClaConfig {
     orgMembersBypass: true,
     lockPrOnMerge: true,
     botAndAppBypass: [],
-    allowedRepos: ['decibri/decibri'],
+    allowedRepos: ['decibri'],
     ...overrides,
   };
 }

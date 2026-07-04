@@ -22,10 +22,6 @@ inputs:
       config, agreement texts, and signature data. Defaults to decibri/decibri-cla.
     required: false
     default: 'decibri/decibri-cla'
-  config-path:
-    description: 'Path to the CLA config file within this repository.'
-    required: false
-    default: 'config/cla.config.json'
   dry-run:
     description: >-
       When true, evaluate and log the coverage decision without writing any

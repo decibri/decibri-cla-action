@@ -21,6 +21,9 @@
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.0"
   },
+  "overrides": {
+    "undici": "6.27.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@types/node": "^22.10.2",

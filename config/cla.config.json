@@ -17,8 +17,6 @@
     "dependabot"
   ],
   "allowedRepos": [
-    "decibri/decibri",
-    "decibri/cla-test-again-11122233"
-  
+    "decibri"
   ]
 }

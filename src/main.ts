@@ -73,10 +73,14 @@ function toRunContext(): RunContext {
 async function run(): Promise<void> {
   const storeToken = core.getInput('store-token');
   const githubToken = core.getInput('github-token');
-  // The config lives in this Action's own bundle, not the calling repository, so
-  // resolve the config-path input against the Action root. An absolute override
-  // passes through unchanged.
-  const configPath = actionPath(core.getInput('config-path') || 'config/cla.config.json');
+  // Mask both tokens immediately so the runner redacts them from logs even if a
+  // future change ever printed one. This does not otherwise change token flow.
+  if (storeToken) core.setSecret(storeToken);
+  if (githubToken) core.setSecret(githubToken);
+  // The config always loads from this Action's own bundle, never from a caller
+  // supplied path, so a caller cannot point it at a config with a permissive
+  // allowlist. The path is fixed and resolved against the Action root.
+  const configPath = actionPath('config/cla.config.json');
   const storeRepo = core.getInput('store-repo') || 'decibri/decibri-cla';
   const dryRun = core.getBooleanInput('dry-run');
 
