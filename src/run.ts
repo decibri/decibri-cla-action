@@ -77,8 +77,6 @@ export interface RunDeps {
   context: RunContext;
   config: ClaConfig;
   dryRun: boolean;
-  /** Full name (owner/repo) of the store repository, for building agreement links. */
-  storeRepo: string;
   checks: CheckGateway;
   comments: CommentGateway;
   pulls: PullRequestGateway;
@@ -332,7 +330,7 @@ async function ensurePromptComment(deps: RunDeps, prNumber: number): Promise<voi
     // Our prompt is already posted; do not add another.
     return;
   }
-  await deps.comments.createComment(prNumber, buildPromptComment(deps.config, deps.storeRepo));
+  await deps.comments.createComment(prNumber, buildPromptComment(deps.config));
 }
 
 async function removePromptComments(deps: RunDeps, prNumber: number): Promise<void> {

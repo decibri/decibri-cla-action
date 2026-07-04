@@ -52,7 +52,6 @@ function makeDeps(options: DepsOptions): { deps: RunDeps; rec: Recorder } {
     context: options.context,
     config: options.config ?? makeConfig(),
     dryRun: options.dryRun ?? false,
-    storeRepo: 'decibri/decibri-cla',
     checks: {
       async setCheck(params) {
         rec.checks.push({

@@ -44,7 +44,6 @@ function makeDeps(
     context,
     config,
     dryRun: true,
-    storeRepo: 'decibri/decibri-cla',
     checks: {
       async setCheck() {
         writes.checks += 1;

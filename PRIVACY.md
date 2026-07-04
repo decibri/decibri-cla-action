@@ -28,6 +28,5 @@ request in full.
 ## Access, correction, and removal
 
 You may request access to, correction of, or erasure of your record by emailing
-privacy@decibri.com. We respond within one calendar month. Where a record is
-retained because your contribution remains in the project, we will tell you what
-is retained and why.
+privacy@decibri.com. Where a record is retained because your contribution remains
+in the project, we will tell you what is retained and why.

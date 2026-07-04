@@ -17,6 +17,12 @@ on:
     types: [opened, synchronize, closed]
   issue_comment:
     types: [created]
+
+permissions:
+  checks: write
+  pull-requests: write
+  contents: read
+
 jobs:
   cla:
     runs-on: ubuntu-latest

@@ -104,7 +104,6 @@ async function run(): Promise<void> {
     context: toRunContext(),
     config,
     dryRun,
-    storeRepo,
     checks: createCheckGateway(local, owner, repo),
     comments: createCommentGateway(local, owner, repo),
     pulls: createPullRequestGateway(local, owner, repo),
