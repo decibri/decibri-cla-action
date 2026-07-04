@@ -18,6 +18,13 @@ export interface AgreementConfig {
   versionHash: string | null;
 }
 
+/**
+ * The single org this system serves. Every allowlist entry is a bare repository
+ * name under this org, and the hard org gate refuses any repository whose owner
+ * is not this org. Defined once here so the prefix and the gate cannot drift.
+ */
+export const DECIBRI_ORG = 'decibri';
+
 export interface ClaConfig {
   icla: AgreementConfig;
   ccla: AgreementConfig;
@@ -31,7 +38,11 @@ export interface ClaConfig {
   lockPrOnMerge: boolean;
   /** Logins (bare slug or slug[bot]) that bypass the CLA. */
   botAndAppBypass: string[];
-  /** Full names (owner/repo) of repositories this system will act on. */
+  /**
+   * Bare repository names (no owner) this system will act on, each implicitly
+   * under DECIBRI_ORG. An entry containing a `/` is rejected, so a foreign owner
+   * can never be smuggled into the list.
+   */
   allowedRepos: string[];
 }
 
@@ -40,10 +51,41 @@ export function isAgreementActive(agreement: AgreementConfig): boolean {
   return typeof agreement.versionHash === 'string' && agreement.versionHash.length > 0;
 }
 
-/** Case insensitive check that a repository full name is in the allowlist. */
-export function isRepoAllowed(config: ClaConfig, repoFullName: string): boolean {
+/**
+ * The hard org-owner gate: case insensitive check that the repository owner is
+ * DECIBRI_ORG. This is structural and independent of allowedRepos, so no
+ * repository outside the org can run the Action regardless of config.
+ */
+export function isOrgOwnerAllowed(owner: string): boolean {
+  return owner.toLowerCase() === DECIBRI_ORG;
+}
+
+/**
+ * Case insensitive check that a repository full name is enrolled. Allowlist
+ * entries are bare repository names; each is prefixed with `${DECIBRI_ORG}/`
+ * before comparison. An entry that already contains a `/` is rejected (never
+ * matched) and reported through the optional warn callback, so a config injected
+ * entry like "attacker/evil" cannot enroll a foreign owner.
+ */
+export function isRepoAllowed(
+  config: ClaConfig,
+  repoFullName: string,
+  warn: (message: string) => void = () => {},
+): boolean {
   const target = repoFullName.toLowerCase();
-  return config.allowedRepos.some((repo) => repo.toLowerCase() === target);
+  let allowed = false;
+  for (const repo of config.allowedRepos) {
+    if (repo.includes('/')) {
+      warn(
+        `Ignoring allowedRepos entry "${repo}": entries must be bare repository names without an owner (for example "decibri").`,
+      );
+      continue;
+    }
+    if (`${DECIBRI_ORG}/${repo}`.toLowerCase() === target) {
+      allowed = true;
+    }
+  }
+  return allowed;
 }
 
 // Validation helpers. Each throws a clear, specific error on malformed data so a

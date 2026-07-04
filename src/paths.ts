@@ -26,9 +26,9 @@ export function actionRoot(): string {
 }
 
 /**
- * Resolve one or more path segments against the Action root. An absolute segment
- * is returned as is, matching node:path.resolve, so an explicit absolute
- * config-path override still works.
+ * Resolve one or more path segments against the Action root. Segments are always
+ * this Action's own fixed paths (the config file and the agreement texts); there
+ * is no caller supplied path override.
  */
 export function actionPath(...segments: string[]): string {
   return resolve(actionRoot(), ...segments);

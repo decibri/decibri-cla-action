@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { createSignatureStore, MAX_APPEND_ATTEMPTS, type SignaturesFile } from '../src/signatures';
+import {
+  createSignatureStore,
+  findLatestSignature,
+  isSignatureCurrent,
+  MAX_APPEND_ATTEMPTS,
+  type SignaturesFile,
+} from '../src/signatures';
 import type { Octokit } from '../src/github';
-import { individualSignature } from './helpers';
+import { CURRENT_ICLA_HASH, individualSignature } from './helpers';
 
 // A fake of the store Octokit client that models the Contents API well enough to
 // exercise the optimistic concurrency retry: getContent returns the current
@@ -87,6 +93,29 @@ describe('createSignatureStore append concurrency', () => {
     expect(ids).toEqual([1, 2]);
     // One retry: two reads, two writes.
     expect(fake.counts()).toEqual({ getCount: 2, putCount: 2 });
+  });
+
+  it('stays correct when the same signer appends concurrently', async () => {
+    // Same GitHub id signs twice at once. The first landed via the concurrent race;
+    // this append must re-read and add its own record on top without dropping either.
+    const first = individualSignature({ githubId: 7, username: 'same', commentUrl: 'https://x/1' });
+    const second = individualSignature({ githubId: 7, username: 'same', commentUrl: 'https://x/2' });
+
+    const fake = makeFakeClient({ initial: EMPTY, mode: 'conflict-once', concurrent: first });
+    const store = createSignatureStore(fake.client, 'decibri', 'decibri-cla', 'data/signatures.json');
+
+    await store.append(second, 'chore(signatures): same signer resign');
+
+    const sigs = fake.getState().signatures;
+    // Both records for the same id are present in append order; nothing is corrupted.
+    expect(sigs.map((s) => s.githubId)).toEqual([7, 7]);
+    expect(sigs.map((s) => s.commentUrl)).toEqual(['https://x/1', 'https://x/2']);
+    expect(fake.counts()).toEqual({ getCount: 2, putCount: 2 });
+
+    // Coverage still resolves cleanly: the latest signature for the id is current.
+    const latest = findLatestSignature(fake.getState(), 7);
+    expect(latest).toBeDefined();
+    expect(isSignatureCurrent(latest!, CURRENT_ICLA_HASH)).toBe(true);
   });
 
   it('fails clearly after exhausting attempts on persistent conflicts', async () => {
