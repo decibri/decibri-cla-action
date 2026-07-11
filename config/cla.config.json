@@ -21,7 +21,12 @@
     "decibri-cli",
     "decibri-website",
     "decibri-resampler",
+    "decibri-aec",
+    "mcp-decibri",
     "mcp-listen",
+    "scoop-decibri",
+    "homebrew-decibri",
+    "decibri-cli-bin",
     "decibri.cpp",
     "decibri-web"
   ]
