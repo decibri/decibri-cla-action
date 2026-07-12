@@ -7,6 +7,13 @@ import type { CommentGateway, IssueComment } from './gateways';
 import type { Octokit } from './github';
 
 /**
+ * The single canonical privacy notice for CLA processing. The prompt comment
+ * links here directly; the duplicate privacy file that used to live in this
+ * repository has been retired so two notices cannot drift apart.
+ */
+export const PRIVACY_POLICY_URL = 'https://decibri.com/privacy';
+
+/**
  * Hidden marker embedded in every comment the Action posts. The Action only ever
  * edits or deletes comments carrying this marker, so it can never touch a
  * contributor's own comments (including their signing comment).
@@ -43,10 +50,11 @@ export function isRecheckCommand(body: string): boolean {
   return body.trim().toLowerCase() === 'recheck';
 }
 
-// Links in the prompt comment must point at the PUBLIC files in this repository,
-// never at the private signature store repo, which returns 404 for contributors
-// who are not members. The default repo below is a fallback for local and test
-// runs; at runtime the values come from the action's own coordinates.
+// File links in the prompt comment (the CLA text and the contributing guide)
+// must point at the PUBLIC files in this repository, never at the private
+// signature store repo, which returns 404 for contributors who are not members.
+// The default repo below is a fallback for local and test runs; at runtime the
+// values come from the action's own coordinates.
 const DEFAULT_ACTION_REPO = 'decibri/decibri-cla-action';
 
 /**
@@ -72,7 +80,6 @@ function fileUrl(base: string, path: string): string {
 export function buildPromptComment(config: ClaConfig): string {
   const base = publicRepoBase();
   const iclaUrl = fileUrl(base, config.icla.file);
-  const privacyUrl = fileUrl(base, 'PRIVACY.md');
   const contributingUrl = fileUrl(base, 'CONTRIBUTING.md');
   return [
     CLA_COMMENT_MARKER,
@@ -92,7 +99,7 @@ export function buildPromptComment(config: ClaConfig): string {
     '<summary>What you are agreeing to, and what we store</summary>',
     '',
     'We record only your GitHub account ID and username, the agreement version, the date and time, and a reference to this pull request. We do not store your email, IP address, or device information. See our ' +
-      `[privacy notice](${privacyUrl}).`,
+      `[privacy notice](${PRIVACY_POLICY_URL}).`,
     '',
     `Contributing on behalf of an employer? Your employer may need a Corporate CLA on file. See the [contributing guide](${contributingUrl}).`,
     '',

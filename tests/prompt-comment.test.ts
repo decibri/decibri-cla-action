@@ -1,7 +1,10 @@
-// The prompt comment must link to the PUBLIC files in this action's repository,
-// never to the private signature store repo (which 404s for non members). These
-// tests lock in the derived base so the links cannot silently rot back to the
-// private repo, and pin the restructured layout: signing action first, the assent
+// The prompt comment's file links (the CLA text and the contributing guide) must
+// point to the PUBLIC files in this action's repository, never to the private
+// signature store repo (which 404s for non members), while the privacy link goes
+// to the single canonical published policy at https://decibri.com/privacy, not to
+// a PRIVACY.md file in any repository. These tests lock in the derived base so
+// the file links cannot silently rot back to the private repo, pin the canonical
+// privacy URL, and pin the restructured layout: signing action first, the assent
 // phrase in a copyable code block, privacy and corporate detail in a collapsed
 // section.
 
@@ -64,19 +67,31 @@ describe('buildPromptComment', () => {
     );
   });
 
-  it('links the privacy notice and the contributing guide in the public repo', () => {
+  it('links the privacy notice at exactly the canonical published policy URL', () => {
     const body = buildPromptComment(makeConfig());
-    expect(body).toContain('https://github.com/decibri/decibri-cla-action/blob/main/PRIVACY.md');
+    expect(body).toContain('[privacy notice](https://decibri.com/privacy)');
+  });
+
+  it('links the contributing guide in the public repo', () => {
+    const body = buildPromptComment(makeConfig());
     expect(body).toContain(
       'https://github.com/decibri/decibri-cla-action/blob/main/CONTRIBUTING.md',
     );
   });
 
-  it('tracks the ref the caller pinned', () => {
+  it('contains no link to a PRIVACY.md file in any repository', () => {
+    const body = buildPromptComment(makeConfig());
+    expect(body).not.toContain('PRIVACY.md');
+  });
+
+  it('tracks the ref the caller pinned for file links, while the privacy link stays canonical', () => {
     process.env.GITHUB_ACTION_REPOSITORY = 'decibri/decibri-cla-action';
     process.env.GITHUB_ACTION_REF = 'v1';
     const body = buildPromptComment(makeConfig());
-    expect(body).toContain('https://github.com/decibri/decibri-cla-action/blob/v1/PRIVACY.md');
+    expect(body).toContain(
+      'https://github.com/decibri/decibri-cla-action/blob/v1/CONTRIBUTING.md',
+    );
+    expect(body).toContain('[privacy notice](https://decibri.com/privacy)');
   });
 
   it('contains no link to the private store repo and no stale CONTRIBUTIONS reference', () => {
@@ -137,7 +152,7 @@ describe('buildPromptComment', () => {
     // Both the privacy sentence (with its link) and the corporate sentence live
     // inside the collapsed section; a future edit that lifts them out is caught.
     expect(collapsed).toContain('We record only your GitHub account ID');
-    expect(collapsed).toContain('PRIVACY.md');
+    expect(collapsed).toContain('https://decibri.com/privacy');
     expect(collapsed).toContain('Corporate CLA on file');
     expect(collapsed).toContain('CONTRIBUTING.md');
   });

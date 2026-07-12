@@ -22,4 +22,5 @@ check will tell you whether you are covered and, if not, how to sign.
 ## Removal requests
 
 To request access to, correction of, or erasure of a CLA signature record, email
-privacy@decibri.com. See [PRIVACY.md](PRIVACY.md) for the full privacy notice.
+privacy@decibri.com. See the [privacy notice](https://decibri.com/privacy) for
+full details.
