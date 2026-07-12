@@ -35522,7 +35522,7 @@ function createCheckGateway(client, owner, repo) {
 // deletes its own comments, the comment body, the helpers that recognise the
 // assent phrase and the recheck command, and the Octokit backed comment gateway.
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.CLA_COMMENT_MARKER = void 0;
+exports.CLA_COMMENT_MARKER = exports.PRIVACY_POLICY_URL = void 0;
 exports.isClaBotComment = isClaBotComment;
 exports.isManagedPromptComment = isManagedPromptComment;
 exports.isAssentPhrase = isAssentPhrase;
@@ -35530,6 +35530,12 @@ exports.isRecheckCommand = isRecheckCommand;
 exports.publicRepoBase = publicRepoBase;
 exports.buildPromptComment = buildPromptComment;
 exports.createCommentGateway = createCommentGateway;
+/**
+ * The single canonical privacy notice for CLA processing. The prompt comment
+ * links here directly; the duplicate privacy file that used to live in this
+ * repository has been retired so two notices cannot drift apart.
+ */
+exports.PRIVACY_POLICY_URL = 'https://decibri.com/privacy';
 /**
  * Hidden marker embedded in every comment the Action posts. The Action only ever
  * edits or deletes comments carrying this marker, so it can never touch a
@@ -35559,10 +35565,11 @@ function isAssentPhrase(body, assentPhrase) {
 function isRecheckCommand(body) {
     return body.trim().toLowerCase() === 'recheck';
 }
-// Links in the prompt comment must point at the PUBLIC files in this repository,
-// never at the private signature store repo, which returns 404 for contributors
-// who are not members. The default repo below is a fallback for local and test
-// runs; at runtime the values come from the action's own coordinates.
+// File links in the prompt comment (the CLA text and the contributing guide)
+// must point at the PUBLIC files in this repository, never at the private
+// signature store repo, which returns 404 for contributors who are not members.
+// The default repo below is a fallback for local and test runs; at runtime the
+// values come from the action's own coordinates.
 const DEFAULT_ACTION_REPO = 'decibri/decibri-cla-action';
 /**
  * Public base URL for links in the prompt comment, of the form
@@ -35585,7 +35592,6 @@ function fileUrl(base, path) {
 function buildPromptComment(config) {
     const base = publicRepoBase();
     const iclaUrl = fileUrl(base, config.icla.file);
-    const privacyUrl = fileUrl(base, 'PRIVACY.md');
     const contributingUrl = fileUrl(base, 'CONTRIBUTING.md');
     return [
         exports.CLA_COMMENT_MARKER,
@@ -35605,7 +35611,7 @@ function buildPromptComment(config) {
         '<summary>What you are agreeing to, and what we store</summary>',
         '',
         'We record only your GitHub account ID and username, the agreement version, the date and time, and a reference to this pull request. We do not store your email, IP address, or device information. See our ' +
-            `[privacy notice](${privacyUrl}).`,
+            `[privacy notice](${exports.PRIVACY_POLICY_URL}).`,
         '',
         `Contributing on behalf of an employer? Your employer may need a Corporate CLA on file. See the [contributing guide](${contributingUrl}).`,
         '',
