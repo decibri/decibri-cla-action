@@ -18,5 +18,9 @@ coverage/
 .idea/
 .vscode/
 
+# Local maintainer runbook, never commit (this repository is public)
+CLAUDE.local.md
+.CLAUDE.local.md
+
 # Note: dist/ is intentionally NOT ignored. GitHub runs the committed bundle at
 # dist/index.js, so the operator commits dist/ after running `npm run build`.

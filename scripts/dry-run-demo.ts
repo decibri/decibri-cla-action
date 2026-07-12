@@ -23,7 +23,9 @@ const config: ClaConfig = {
   orgMembersBypass: true,
   lockPrOnMerge: true,
   botAndAppBypass: [],
-  allowedRepos: ['decibri/decibri'],
+  // Bare repository name under the decibri org, matching the config format
+  // (isRepoAllowed rejects entries containing a slash).
+  allowedRepos: ['decibri'],
 };
 
 interface Writes {
