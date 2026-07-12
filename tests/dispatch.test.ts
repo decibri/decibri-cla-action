@@ -273,12 +273,15 @@ describe('runCla pull request events', () => {
     expect(rec.checks).toHaveLength(0);
   });
 
-  it('exits without any action when the repo is not in allowedRepos', async () => {
+  it('fails closed with a single check and no comment when the repo is not in allowedRepos', async () => {
     const { deps, rec } = makeDeps({
       context: { ...prOpened(EXTERNAL), repo: 'not-enrolled' },
     });
     await runCla(deps);
-    expect(rec.checks).toHaveLength(0);
+    expect(rec.checks).toHaveLength(1);
+    expect(rec.checks[0].conclusion).toBe('failure');
+    expect(rec.checks[0].title).toBe('CLA enforcement not configured for this repository');
+    expect(rec.checks[0].summary).toContain('not in the CLA allowlist');
     expect(rec.created).toHaveLength(0);
     expect(rec.appended).toHaveLength(0);
   });

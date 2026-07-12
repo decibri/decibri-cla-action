@@ -9,7 +9,13 @@
 // gateway call lives past a `dryRun` guard, so a dry run only reads and logs.
 
 import { DECIBRI_ORG, isAgreementActive, isOrgOwnerAllowed, isRepoAllowed, type ClaConfig } from './config';
-import { checkConclusion, checkSummary, checkTitle } from './checks';
+import {
+  NOT_ALLOWLISTED_CHECK_TITLE,
+  checkConclusion,
+  checkSummary,
+  checkTitle,
+  notAllowlistedCheckSummary,
+} from './checks';
 import {
   buildPromptComment,
   isAssentPhrase,
@@ -106,9 +112,14 @@ export async function runCla(deps: RunDeps): Promise<void> {
     return;
   }
 
-  // Multi repo guard: refuse to act on a repository that is not enrolled.
+  // Multi repo guard: refuse to enforce on a repository that is not enrolled.
+  // Exiting silently here would leave a required CLA check "expected, waiting"
+  // forever with no explanation on the pull request, so instead post a failing
+  // check that names the cause, then exit. Fail closed: an unconfigured
+  // repository must never resolve to a green check. Nothing else happens on
+  // this path: no prompt comment, no store read or write.
   if (!isRepoAllowed(config, repoFullName, (message) => log.warning(message))) {
-    log.info(`Repository ${repoFullName} is not in allowedRepos. Exiting without action.`);
+    await reportNotAllowlisted(deps, repoFullName);
     return;
   }
 
@@ -126,6 +137,38 @@ export async function runCla(deps: RunDeps): Promise<void> {
     default:
       log.info(`Event ${context.eventName} is not handled by the CLA system. Nothing to do.`);
   }
+}
+
+/**
+ * The not-allowlisted exit: post a failing check on the event's head SHA so the
+ * required check resolves to a visible failure instead of hanging, and touch
+ * nothing else. Only pull_request and merge_group events carry a head SHA in
+ * their payload; an event without one (issue_comment) has nothing to anchor a
+ * check to and only logs. The org-owner gate has already passed by the time
+ * this runs, so it never reports into a repository outside the decibri org.
+ */
+async function reportNotAllowlisted(deps: RunDeps, repoFullName: string): Promise<void> {
+  const { context, config, dryRun, log } = deps;
+  log.info(`Repository ${repoFullName} is not in allowedRepos.`);
+  const headSha = context.pullRequest?.head.sha ?? context.mergeGroup?.headSha;
+  if (!headSha) {
+    log.info('This event carries no pull request head SHA to anchor a check to. Exiting without action.');
+    return;
+  }
+  if (dryRun) {
+    log.info(
+      `[dry-run] would set the ${config.checkName} check to failure on ${headSha} because ${repoFullName} is not in allowedRepos.`,
+    );
+    return;
+  }
+  await deps.checks.setCheck({
+    headSha,
+    name: config.checkName,
+    conclusion: 'failure',
+    title: NOT_ALLOWLISTED_CHECK_TITLE,
+    summary: notAllowlistedCheckSummary(repoFullName),
+  });
+  log.info(`Set the ${config.checkName} check to failure on ${headSha}. Exiting.`);
 }
 
 async function handleMergeGroupEvent(deps: RunDeps): Promise<void> {

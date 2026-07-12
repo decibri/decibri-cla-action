@@ -26,6 +26,26 @@ export function checkSummary(decision: CoverageDecision, assentPhrase: string): 
   ].join('\n');
 }
 
+/**
+ * Check text for a decibri owned repository that is not in allowedRepos. The
+ * conclusion is always a failure so an unconfigured repository resolves its
+ * required check visibly and can never merge on a green check.
+ */
+export const NOT_ALLOWLISTED_CHECK_TITLE = 'CLA enforcement not configured for this repository';
+
+export function notAllowlistedCheckSummary(repoFullName: string): string {
+  return [
+    `${repoFullName} is not in the CLA allowlist. The CLA action was invoked here, but it is not ` +
+      'configured to enforce the CLA for this repository, so it cannot evaluate coverage. This check ' +
+      'fails closed so that an unconfigured repository cannot merge on a green check.',
+    '',
+    'To enable CLA enforcement, a maintainer must add this repository to `allowedRepos` in ' +
+      '`config/cla.config.json` in decibri/decibri-cla-action and move the `v1` tag for the change ' +
+      'to take effect. If CLA enforcement is not intended here, remove the CLA workflow and the ' +
+      'required check from this repository instead.',
+  ].join('\n');
+}
+
 /** Build the Octokit backed check gateway for the calling repository. */
 export function createCheckGateway(client: Octokit, owner: string, repo: string): CheckGateway {
   return {

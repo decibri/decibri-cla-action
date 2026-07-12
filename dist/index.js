@@ -35448,9 +35448,11 @@ function wrappy (fn, cb) {
 // The CLA check run: mapping a coverage decision to a check, and the Octokit
 // backed gateway that sets it on the pull request head SHA.
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NOT_ALLOWLISTED_CHECK_TITLE = void 0;
 exports.checkConclusion = checkConclusion;
 exports.checkTitle = checkTitle;
 exports.checkSummary = checkSummary;
+exports.notAllowlistedCheckSummary = notAllowlistedCheckSummary;
 exports.createCheckGateway = createCheckGateway;
 function checkConclusion(decision) {
     return decision.covered ? 'success' : 'failure';
@@ -35468,6 +35470,24 @@ function checkSummary(decision, assentPhrase) {
         'To sign, comment the following on this pull request, exactly, from your own account:',
         '',
         `> ${assentPhrase}`,
+    ].join('\n');
+}
+/**
+ * Check text for a decibri owned repository that is not in allowedRepos. The
+ * conclusion is always a failure so an unconfigured repository resolves its
+ * required check visibly and can never merge on a green check.
+ */
+exports.NOT_ALLOWLISTED_CHECK_TITLE = 'CLA enforcement not configured for this repository';
+function notAllowlistedCheckSummary(repoFullName) {
+    return [
+        `${repoFullName} is not in the CLA allowlist. The CLA action was invoked here, but it is not ` +
+            'configured to enforce the CLA for this repository, so it cannot evaluate coverage. This check ' +
+            'fails closed so that an unconfigured repository cannot merge on a green check.',
+        '',
+        'To enable CLA enforcement, a maintainer must add this repository to `allowedRepos` in ' +
+            '`config/cla.config.json` in decibri/decibri-cla-action and move the `v1` tag for the change ' +
+            'to take effect. If CLA enforcement is not intended here, remove the CLA workflow and the ' +
+            'required check from this repository instead.',
     ].join('\n');
 }
 /** Build the Octokit backed check gateway for the calling repository. */
@@ -36488,9 +36508,14 @@ async function runCla(deps) {
         log.info(`Repository owner ${context.owner} is not the ${config_1.DECIBRI_ORG} organisation. Exiting without action.`);
         return;
     }
-    // Multi repo guard: refuse to act on a repository that is not enrolled.
+    // Multi repo guard: refuse to enforce on a repository that is not enrolled.
+    // Exiting silently here would leave a required CLA check "expected, waiting"
+    // forever with no explanation on the pull request, so instead post a failing
+    // check that names the cause, then exit. Fail closed: an unconfigured
+    // repository must never resolve to a green check. Nothing else happens on
+    // this path: no prompt comment, no store read or write.
     if (!(0, config_1.isRepoAllowed)(config, repoFullName, (message) => log.warning(message))) {
-        log.info(`Repository ${repoFullName} is not in allowedRepos. Exiting without action.`);
+        await reportNotAllowlisted(deps, repoFullName);
         return;
     }
     switch (context.eventName) {
@@ -36507,6 +36532,35 @@ async function runCla(deps) {
         default:
             log.info(`Event ${context.eventName} is not handled by the CLA system. Nothing to do.`);
     }
+}
+/**
+ * The not-allowlisted exit: post a failing check on the event's head SHA so the
+ * required check resolves to a visible failure instead of hanging, and touch
+ * nothing else. Only pull_request and merge_group events carry a head SHA in
+ * their payload; an event without one (issue_comment) has nothing to anchor a
+ * check to and only logs. The org-owner gate has already passed by the time
+ * this runs, so it never reports into a repository outside the decibri org.
+ */
+async function reportNotAllowlisted(deps, repoFullName) {
+    const { context, config, dryRun, log } = deps;
+    log.info(`Repository ${repoFullName} is not in allowedRepos.`);
+    const headSha = context.pullRequest?.head.sha ?? context.mergeGroup?.headSha;
+    if (!headSha) {
+        log.info('This event carries no pull request head SHA to anchor a check to. Exiting without action.');
+        return;
+    }
+    if (dryRun) {
+        log.info(`[dry-run] would set the ${config.checkName} check to failure on ${headSha} because ${repoFullName} is not in allowedRepos.`);
+        return;
+    }
+    await deps.checks.setCheck({
+        headSha,
+        name: config.checkName,
+        conclusion: 'failure',
+        title: checks_1.NOT_ALLOWLISTED_CHECK_TITLE,
+        summary: (0, checks_1.notAllowlistedCheckSummary)(repoFullName),
+    });
+    log.info(`Set the ${config.checkName} check to failure on ${headSha}. Exiting.`);
 }
 async function handleMergeGroupEvent(deps) {
     const { context, config, dryRun, log } = deps;
